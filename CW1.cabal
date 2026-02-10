@@ -125,5 +125,11 @@ test-suite CW1-test
 
     -- Test dependencies.
     build-depends:
-        base ^>=4.18.3.0,
-        CW1
+        base ^>=4.18.3.0
+        , containers
+        , tasty
+        , tasty-hunit
+        , tasty-quickcheck
+        , HUnit
+        , random
+        , CW1

@@ -1,8 +1,13 @@
 module Main where
 
 import qualified MyLib (someFunc)
+import RedBlackTrees
+
+
 
 main :: IO ()
 main = do
-  putStrLn "Hello, Haskell!"
+  let t = fromList [1..10]
+  let t1 = delete t 10
+  print t1 
   MyLib.someFunc

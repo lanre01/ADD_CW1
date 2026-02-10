@@ -1,4 +1,7 @@
-module Main (main) where
+{-# LANGUAGE ScopedTypeVariables #-}
 
+module Main where 
+import RedBlackTreeTests as RBTT 
 main :: IO ()
-main = putStrLn "Test suite not yet implemented."
+main = do
+    RBTT.runTests
