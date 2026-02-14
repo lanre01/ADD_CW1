@@ -61,6 +61,7 @@ library
     exposed-modules:  
         MyLib
         RedBlackTrees
+        BST
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -133,3 +134,16 @@ test-suite CW1-test
         , HUnit
         , random
         , CW1
+
+benchmark my-bench
+  type: exitcode-stdio-1.0
+  hs-source-dirs: bench
+  main-is: Bench.hs
+  build-depends:
+      base ^>=4.18.3.0,
+      criterion,
+      random,
+      deepseq,
+      CW1
+
+  default-language: GHC2021

@@ -2,7 +2,8 @@ module Main where
 
 import qualified MyLib (someFunc)
 import RedBlackTrees
-
+import BST
+import Criterion.Main
 
 
 main :: IO ()

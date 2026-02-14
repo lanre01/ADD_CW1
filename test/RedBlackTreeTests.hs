@@ -132,31 +132,7 @@ testSortedOrder = TestList $
         assertBool ("Not all elements present for: " ++ show xs) allPresent)
     testLists
 
--- Test black height invariant specifically
-{-
-testBlackHeight :: Test
-testBlackHeight = TestCase $ do
-    let trees = map fromList testLists
-    let allValid = all bhInvariant trees
-    assertBool "Black height invariant" allValid
--}
 
--- Test color invariant (no red-red violations)
-{-testColorInvariant :: Test
-testColorInvariant = TestCase $ do
-    let trees = map fromList testLists
-    let allValid = all colourInvariant trees
-    assertBool "Color invariant" allValid
--}
-
--- Test root is always black
-{-
-testRootBlack :: Test
-testRootBlack = TestCase $ do
-    let trees = map fromList testLists
-    let allBlack = all isBlackNode trees
-    assertBool "Root is always black" allBlack
--}
 
 -- Test that insert of duplicate doesn't change tree
 testInsertDuplicate :: Test
