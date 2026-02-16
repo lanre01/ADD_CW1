@@ -7,6 +7,7 @@ import Test.HUnit
 import Data.List (nub, sort)
 import Control.Monad (replicateM)
 import System.Random (randomRIO, newStdGen, randomRs, mkStdGen)
+import Test.QuickCheck
 
 -- Helper function to convert tree to list using Foldable instance
 toList' :: RBTree a -> [a]

@@ -130,10 +130,11 @@ test-suite CW1-test
         , containers
         , tasty
         , tasty-hunit
-        , tasty-quickcheck
+        -- , tasty-quickcheck
         , HUnit
         , random
         , CW1
+        , QuickCheck
 
 benchmark my-bench
   type: exitcode-stdio-1.0
