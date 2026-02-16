@@ -72,5 +72,5 @@ main = defaultMain
 
 
 -- cabal bench --benchmark-options="--csv=bench-output/results.csv"
--- cabal bench --benchmark-options="--csv=BST.csv --match=BST"
--- cabal bench --benchmark-options="--csv=RBT.csv --match=RBT"
+-- cabal bench --benchmark-options="--csv=bench-output/RBT.csv --match pattern RBT"
+-- cabal bench --benchmark-options="--csv=bench-output/BST.csv --match pattern BST"

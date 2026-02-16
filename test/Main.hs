@@ -3,97 +3,74 @@
 module Main where
 
 import Test.QuickCheck
-import Data.List (sort, nub)
-
+import Data.List (sort, nub, foldl')
 import RedBlackTrees
-  ( Colour(..)
-  , RBTree(..)
-  , fromList
-  , isBST
-  , isRBT
-  , insert
-  , delete
-  , contains
-  )
 
--- ----------------------------
--- Helpers: inorder + list model
--- ----------------------------
-
--- Inorder traversal using only exported constructors
+-- Inorder traversal 
 inorder :: RBTree a -> [a]
-inorder Nil = []
-inorder (Node x _ l r) = inorder l ++ [x] ++ inorder r
+inorder t = go t []
+  where
+    go Nil acc = acc
+    go (Node x _ l r) acc = go l (x : go r acc)
 
--- Your tree behaves like a SET (duplicates ignored).
+-- returns new list without duplicates
 modelFromList :: Ord a => [a] -> [a]
 modelFromList = sort . nub
 
+-- inserts an element into the list ignoring duplicates just like RBTrees
 modelInsert :: Ord a => a -> [a] -> [a]
 modelInsert x xs = modelFromList (x : xs)
 
+-- removes an element from the list if present
 modelDelete :: Ord a => a -> [a] -> [a]
-modelDelete x xs = filter (/= x) xs  -- already sorted+unique in our usage
+modelDelete x xs = filter (/= x) xs 
 
--- --------------------------------
--- Properties (core invariants/spec)
--- --------------------------------
 
--- Building from a list should produce a valid BST and RBT
-prop_fromList_valid :: [Int] -> Property
-prop_fromList_valid xs =
+prop_fromList_must_produce_valid_RBT :: [Int] -> Property
+prop_fromList_must_produce_valid_RBT xs =
   let t = fromList xs
-  in counterexample ("tree=" ++ show t) $
-       isBST t .&&. isRBT t
+  in 
+    counterexample ("tree=" ++ show t) (property (isRBT t))
 
--- Inorder traversal should match the set model (sorted, unique)
-prop_fromList_inorder_matches_model :: [Int] -> Property
-prop_fromList_inorder_matches_model xs =
+prop_value_invariant_must_be_preserved :: [Int] -> Property
+prop_value_invariant_must_be_preserved xs =
   let t = fromList xs
   in counterexample ("inorder=" ++ show (inorder t) ++
                      "\nmodel=" ++ show (modelFromList xs)) $
        inorder t === modelFromList xs
 
--- contains should agree with model membership
-prop_contains_matches_model :: [Int] -> Int -> Property
-prop_contains_matches_model xs x =
+prop_contains_must_return_true_for_valid_element :: [Int] -> Int -> Property
+prop_contains_must_return_true_for_valid_element xs x =
   let t     = fromList xs
       model = modelFromList xs
   in counterexample ("tree=" ++ show t) $
        contains t x === (x `elem` model)
 
--- Inserting one element preserves invariants and matches model
-prop_insert_preserves_invariants_and_semantics :: [Int] -> Int -> Property
-prop_insert_preserves_invariants_and_semantics xs x =
+prop_insert_must_preserve_RBT_invariant :: [Int] -> Int -> Property
+prop_insert_must_preserve_RBT_invariant xs x =
   let t  = fromList xs
       t' = insert t x
       model' = modelInsert x (modelFromList xs)
   in conjoin
-      [ counterexample "BST failed after insert" (property (isBST t'))
-      , counterexample "RBT failed after insert" (property (isRBT t'))
+      [ counterexample "RBT failed after insert" (property (isRBT t'))
       , counterexample "inorder != model after insert" (inorder t' === model')
       , counterexample "contains mismatch after insert"
           (contains t' x === True)
       ]
 
--- Deleting one element preserves invariants and matches model
-prop_delete_preserves_invariants_and_semantics :: [Int] -> Int -> Property
-prop_delete_preserves_invariants_and_semantics xs x =
+
+prop_delete_must_preserves_RBT_invariant :: [Int] -> Int -> Property
+prop_delete_must_preserves_RBT_invariant xs x =
   let t  = fromList xs
       t' = delete t x
       model0 = modelFromList xs
       model' = modelDelete x model0
   in conjoin
-      [ counterexample "BST failed after delete" (property (isBST t'))
-      , counterexample "RBT failed after delete" (property (isRBT t'))
+      [ counterexample "RBT failed after delete" (property (isRBT t'))
       , counterexample "inorder != model after delete" (inorder t' === model')
       , counterexample "contains should be false after delete"
           (contains t' x === False)
       ]
-
--- -------------------------------
--- Sequence testing (strongest one)
--- -------------------------------
 
 data Op = Ins Int | Del Int deriving (Show)
 
@@ -112,11 +89,10 @@ applyOpModel xs (Del x) = modelDelete x xs
 
 prop_ops_sequence_matches_model_and_invariants :: [Op] -> Property
 prop_ops_sequence_matches_model_and_invariants ops =
-  let tFinal = foldl applyOpTree (fromList []) ops
-      mFinal = foldl applyOpModel [] ops
+  let tFinal = foldl' applyOpTree Nil ops
+      mFinal = foldl' applyOpModel [] ops
   in conjoin
-      [ counterexample ("Final tree=" ++ show tFinal) (property (isBST tFinal))
-      , counterexample ("Final tree=" ++ show tFinal) (property (isRBT tFinal))
+      [ counterexample ("Final tree=" ++ show tFinal) (property (isRBT tFinal))
       , counterexample ("Final inorder=" ++ show (inorder tFinal) ++
                         "\nFinal model=" ++ show mFinal)
           (inorder tFinal === mFinal)
@@ -125,15 +101,11 @@ prop_ops_sequence_matches_model_and_invariants ops =
             contains tFinal x === (x `elem` mFinal)
       ]
 
--- -------------
--- Test runner
--- -------------
-
 main :: IO ()
 main = do
-  quickCheck prop_fromList_valid
-  quickCheck prop_fromList_inorder_matches_model
-  quickCheck prop_contains_matches_model
-  quickCheck prop_insert_preserves_invariants_and_semantics
-  quickCheck prop_delete_preserves_invariants_and_semantics
+  quickCheck prop_fromList_must_produce_valid_RBT
+  quickCheck prop_value_invariant_must_be_preserved
+  quickCheck prop_contains_must_return_true_for_valid_element
+  quickCheck prop_insert_must_preserve_RBT_invariant
+  quickCheck prop_delete_must_preserves_RBT_invariant
   quickCheck prop_ops_sequence_matches_model_and_invariants

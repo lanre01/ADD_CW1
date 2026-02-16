@@ -24,10 +24,6 @@ instance Foldable RBTree where
   foldMap _ Nil = mempty
   foldMap f (Node x _ l r) = foldMap f l <> f x <> foldMap f r
 
-
-
-
-
 -- |Constructs a red-black tree from a list of values.
 fromList :: (Ord a) => [a] -> RBTree a 
 fromList xs = let t = Nil in foldl insert Nil xs
@@ -152,16 +148,16 @@ del (Node _ col lt rt)    = inject (\rt' -> Node succ col lt rt') tree >>= balHL
                     where (tree, succ) = successor rt 
 
 successor :: Ord a => RBTree a -> (Either (RBTree a) (RBTree a), a)
-successor Nil                  = error "No successor from Nil node"
+successor Nil                   = error "No successor from Nil node"
 successor (Node a Red Nil rt)   = (Done rt, a)
 successor (Node a Black Nil rt) = (blacken' rt, a)
-successor (Node a col lt rt)   = (inject (\lt' -> Node a col lt' rt) tree >>= balHR, suc)
+successor (Node a col lt rt)    = (inject (\lt' -> Node a col lt' rt) tree >>= balHR, suc)
                           where (tree, suc) = successor lt                                 
 
 -- balance the black height of the left subtree to match the right subtree
 balHL :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balHL (Node a col (Node b Black llt lrt) rt) = balanceL' (Node a col (Node b Red llt lrt) rt) 
-balHL (Node a _ (Node b Red llt lrt) rt) = inject (\rt' -> Node b Black llt rt') (balHR (Node a Red lrt rt))
+balHL (Node a _ (Node b Red llt lrt) rt) = inject (\rt' -> Node b Black llt rt') (balHL (Node a Red lrt rt))
 
 
 -- balance the black height of the right subtree to match the left subtree
