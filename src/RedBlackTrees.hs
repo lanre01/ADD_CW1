@@ -112,14 +112,18 @@ insert tree key = (blacken . fromEither . insert') tree
                                    | otherwise = Done t -- ignores duplicate values   
 
 balanceL :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
-balanceL (Node a Black (Node b Red (Node c Red lllt llrt) lrt) rt) = Cont $ Node b Red (Node c Black lllt llrt) (Node a Black lrt rt)
-balanceL (Node a Black (Node b Red llt (Node c Red lrlt lrrt)) rt) = Cont $ Node c Red (Node b Black llt lrlt) (Node a Black lrrt rt)
+balanceL (Node a Black (Node b Red (Node c Red lllt llrt) lrt) rt) = 
+                            Cont $ Node b Red (Node c Black lllt llrt) (Node a Black lrt rt)
+balanceL (Node a Black (Node b Red llt (Node c Red lrlt lrrt)) rt) = 
+                            Cont $ Node c Red (Node b Black llt lrlt) (Node a Black lrrt rt)
 balanceL t@(Node _ Black _ _) = Done t 
-balanceL t                 = Cont t  
+balanceL t                    = Cont t  
 
 balanceR :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
-balanceR (Node a Black lt (Node b Red rlt (Node c Red rrlt rrrt))) = Cont $ Node b Red (Node a Black lt rlt) (Node c Black rrlt rrrt)
-balanceR (Node a Black lt (Node b Red (Node c Red rrlt rrrt) rrt)) = Cont $ Node c Red (Node a Black lt rrlt) (Node b Black rrrt rrt) 
+balanceR (Node a Black lt (Node b Red rlt (Node c Red rrlt rrrt))) = 
+                            Cont $ Node b Red (Node a Black lt rlt) (Node c Black rrlt rrrt)
+balanceR (Node a Black lt (Node b Red (Node c Red rrlt rrrt) rrt)) = 
+                            Cont $ Node c Red (Node a Black lt rrlt) (Node b Black rrrt rrt) 
 balanceR t@(Node _ Black _ _) = Done t 
 balanceR t                    = Cont t
 
@@ -144,26 +148,28 @@ del :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 del Nil                   = error "Nothing to delete"
 del (Node _ Red lt Nil)   = Done lt 
 del (Node _ Black lt Nil) = blacken' lt  
-del (Node _ col lt rt)    = inject (\rt' -> Node succ col lt rt') tree >>= balHL 
-                    where (tree, succ) = successor rt 
+del (Node _ col lt rt)    = inject (\rt' -> Node suc col lt rt') tree >>= balHL 
+                    where (tree, suc) = (successor rt) 
 
 successor :: Ord a => RBTree a -> (Either (RBTree a) (RBTree a), a)
 successor Nil                   = error "No successor from Nil node"
 successor (Node a Red Nil rt)   = (Done rt, a)
 successor (Node a Black Nil rt) = (blacken' rt, a)
-successor (Node a col lt rt)    = (inject (\lt' -> Node a col lt' rt) tree >>= balHR, suc)
-                          where (tree, suc) = successor lt                                 
+successor (Node a col lt rt)    = (inject (\lt' -> Node a col lt' rt) eTree >>= balHR, suc)
+                          where (eTree, suc) = successor lt                                 
 
 -- balance the black height of the left subtree to match the right subtree
 balHL :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balHL (Node a col (Node b Black llt lrt) rt) = balanceL' (Node a col (Node b Red llt lrt) rt) 
-balHL (Node a _ (Node b Red llt lrt) rt) = inject (\rt' -> Node b Black llt rt') (balHL (Node a Red lrt rt))
+balHL (Node a _ (Node b Red llt lrt) rt) = inject (\rt' -> Node b Black llt rt') 
+                                                  (balHL (Node a Red lrt rt))
 
 
 -- balance the black height of the right subtree to match the left subtree
 balHR :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balHR (Node a col lt (Node b Black rlt rrt)) = balanceR' (Node a col lt (Node b Red rlt rrt))
-balHR (Node a _ lt (Node b Red rlt rrt)) = inject (\lt' -> Node b Black lt' rrt) (balHR (Node a Red lt rlt))
+balHR (Node a _ lt (Node b Red rlt rrt)) = inject (\lt' -> Node b Black lt' rrt) 
+                                                  (balHR (Node a Red lt rlt))
 
 
 -- Similar to insertion, Tries to correct the height deficit if possible otherwise bubbles the deficit upwards

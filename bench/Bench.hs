@@ -32,15 +32,31 @@ instance NFData RBT.Colour where
 mkEnv :: Int -> IO ([Int], BST.BST Int, RBT.RBTree Int, [Int])
 mkEnv n = do
       xs  <- randomListIO n
+      ys  <- randomListIO (n `div` 4)
       let 
         !bst = BST.fromList xs
         !rbt = RBT.fromList xs
-        keys = take 1000 xs
+        keys = ys ++ take (n `div` 4) xs  
       pure (xs, bst, rbt, keys)
+
+sortedList :: Int -> [Int]
+sortedList  n = [1..n]
+
+-- Build both trees from same xs
+mkEnv2 :: Int -> IO ([Int], BST.BST Int, RBT.RBTree Int, [Int])
+mkEnv2 n =
+      let 
+        xs   = sortedList n
+        !bst = BST.fromList xs
+        !rbt = RBT.fromList xs
+        keys = take (n `div` 2) xs  
+        in 
+      return (xs, bst, rbt, keys)
+
 
 main :: IO ()
 main = defaultMain
-  [ bgroup "insert"
+  [ bgroup "insert-random"
       [ env (randomListIO n) $ \xs ->
           bgroup (show n)
             [ bench "BST" $ nf BST.fromList xs
@@ -48,8 +64,16 @@ main = defaultMain
             ]
       | n <- sizes
       ]
-
-  , bgroup "contains-1000"
+  , bgroup "insert-sorted"
+    [
+      env (pure (sortedList n)) $ \xs -> 
+        bgroup (show n)
+            [ bench "BST" $ nf BST.fromList xs
+            , bench "RBT" $ nf RBT.fromList xs
+            ]
+      | n <- sizes
+    ]
+  , bgroup "contains-random"
       [ env (mkEnv n) $ \ ~( _xs, bst, rbt, keys ) ->
           bgroup (show n)
             [ bench "BST" $
@@ -59,9 +83,27 @@ main = defaultMain
             ]
       | n <- sizes
       ]
+  , bgroup "contains-sorted"
+      [ env (mkEnv2 n) $ \ ~( _xs, bst, rbt, keys ) ->
+          bgroup (show n)
+            [ bench "BST" $
+                nf (\ks -> foldl' (\acc k -> BST.contains bst k `seq` acc) () ks) keys
+            , bench "RBT" $
+                nf (\ks -> foldl' (\acc k -> RBT.contains rbt k `seq` acc) () ks) keys
+            ]
+      | n <- sizes
+      ]
 
-  , bgroup "delete-1000"
+  , bgroup "delete"
       [ env (mkEnv n) $ \ ~( _xs, bst, rbt, keys ) ->
+          bgroup (show n)
+            [ bench "BST" $ nf (\ks -> foldl' BST.delete bst ks) keys
+            , bench "RBT" $ nf (\ks -> foldl' RBT.delete rbt ks) keys
+            ]
+      | n <- sizes
+      ]
+  , bgroup "delete-random"
+      [ env (mkEnv2 n) $ \ ~( _xs, bst, rbt, keys ) ->
           bgroup (show n)
             [ bench "BST" $ nf (\ks -> foldl' BST.delete bst ks) keys
             , bench "RBT" $ nf (\ks -> foldl' RBT.delete rbt ks) keys
@@ -72,5 +114,6 @@ main = defaultMain
 
 
 -- cabal bench --benchmark-options="--csv=bench-output/results.csv"
--- cabal bench --benchmark-options="--csv=bench-output/RBT.csv --match pattern RBT"
+-- cabal bench --benchmark-options="+RTS -s -RTS --csv=bench-output/RBT.csv --match pattern RBT"
 -- cabal bench --benchmark-options="--csv=bench-output/BST.csv --match pattern BST"
+-- --benchmark-options="+RTS -s -RTS"
