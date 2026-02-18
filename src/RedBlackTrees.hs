@@ -46,6 +46,7 @@ orderedBy f (x:y:xs) = f x y && orderedBy f (y:xs)
 isRBT :: (Ord a) => RBTree a -> Bool 
 isRBT t = isBlackNode t && allChecks t Nothing Nothing /= Nothing
 
+-- Single-pass red-black validation: bounds, red-red rule, and black-height.
 allChecks :: Ord a => RBTree a -> Maybe a -> Maybe a -> Maybe Int
 allChecks Nil _ _ = Just 1  
 allChecks (Node x c lt rt) lo hi = do
@@ -84,16 +85,23 @@ colour :: RBTree a -> Colour
 colour Nil = Black 
 colour (Node _ c _ _) = c 
 
+-- The implementation uses `Either` as a control-flow monad.
+-- `Done` wraps `Left` to mean “stop / no further fix-up needed”, while
+-- `Continue` wraps `Right` to mean “keep bubbling the fix-up upward”.
+-- This avoids defining a custom wrapper type and writing a new `Monad`
+-- instance solely to encode this two-state behaviour.
 pattern Done :: a -> Either a b 
 pattern Done x = Left x 
 
-pattern Cont :: b -> Either a b 
-pattern Cont x = Right x
+pattern Continue :: b -> Either a b 
+pattern Continue x = Right x
+
+{-# COMPLETE Done, Continue #-}
 
 -- injects a function into an either Left or Right constructor
 inject :: (t -> b) -> Either t t -> Either b b
 inject f (Done a) = Done (f a) 
-inject f (Cont a) = Cont (f a)
+inject f (Continue a) = Continue (f a)
 
 fromEither :: Either a a -> a 
 fromEither = either id id 
@@ -106,26 +114,27 @@ node a = Node a Red Nil Nil
 insert :: (Ord a) => RBTree a -> a -> RBTree a 
 insert tree key = (blacken . fromEither . insert') tree 
         where
-        insert' Nil = Cont $ node key
+        insert' Nil = Continue $ node key
         insert' t@(Node b c lt rt) | key < b = inject (\lt' -> Node b c lt' rt) (insert' lt) >>= balanceL  
                                    | key > b = inject (\rt' -> Node b c lt rt') (insert' rt) >>= balanceR
                                    | otherwise = Done t -- ignores duplicate values   
 
+-- fixes red-red violations
 balanceL :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balanceL (Node a Black (Node b Red (Node c Red lllt llrt) lrt) rt) = 
-                            Cont $ Node b Red (Node c Black lllt llrt) (Node a Black lrt rt)
+                            Continue $ Node b Red (Node c Black lllt llrt) (Node a Black lrt rt)
 balanceL (Node a Black (Node b Red llt (Node c Red lrlt lrrt)) rt) = 
-                            Cont $ Node c Red (Node b Black llt lrlt) (Node a Black lrrt rt)
+                            Continue $ Node c Red (Node b Black llt lrlt) (Node a Black lrrt rt)
 balanceL t@(Node _ Black _ _) = Done t 
-balanceL t                    = Cont t  
+balanceL t                    = Continue t  
 
 balanceR :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balanceR (Node a Black lt (Node b Red rlt (Node c Red rrlt rrrt))) = 
-                            Cont $ Node b Red (Node a Black lt rlt) (Node c Black rrlt rrrt)
+                            Continue $ Node b Red (Node a Black lt rlt) (Node c Black rrlt rrrt)
 balanceR (Node a Black lt (Node b Red (Node c Red rrlt rrrt) rrt)) = 
-                            Cont $ Node c Red (Node a Black lt rrlt) (Node b Black rrrt rrt) 
+                            Continue $ Node c Red (Node a Black lt rrlt) (Node b Black rrrt rrt) 
 balanceR t@(Node _ Black _ _) = Done t 
-balanceR t                    = Cont t
+balanceR t                    = Continue t
 
 blacken :: RBTree a -> RBTree a 
 blacken (Node a Red lt rt) = Node a Black lt rt 
@@ -133,7 +142,7 @@ blacken tree               = tree
 
 blacken' ::Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 blacken' (Node a Red lt rt) = Done $ Node a Black lt rt 
-blacken' tree               = Cont tree 
+blacken' tree               = Continue tree 
 
 
 -- |Deletes an element from the tree, if it is present.
@@ -161,18 +170,18 @@ successor (Node a col lt rt)    = (inject (\lt' -> Node a col lt' rt) eTree >>= 
 -- balance the black height of the left subtree to match the right subtree
 balHL :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balHL (Node a col (Node b Black llt lrt) rt) = balanceL' (Node a col (Node b Red llt lrt) rt) 
-balHL (Node a _ (Node b Red llt lrt) rt) = inject (\rt' -> Node b Black llt rt') 
-                                                  (balHL (Node a Red lrt rt))
-
+balHL (Node a _ (Node b Red llt lrt) rt)     = inject (\rt' -> Node b Black llt rt') 
+                                                      (balHL (Node a Red lrt rt))
+balHL                     _              = error "No black height deficit possible"
 
 -- balance the black height of the right subtree to match the left subtree
 balHR :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balHR (Node a col lt (Node b Black rlt rrt)) = balanceR' (Node a col lt (Node b Red rlt rrt))
-balHR (Node a _ lt (Node b Red rlt rrt)) = inject (\lt' -> Node b Black lt' rrt) 
-                                                  (balHR (Node a Red lt rlt))
+balHR (Node a _ lt (Node b Red rlt rrt))     = inject (\lt' -> Node b Black lt' rrt) 
+                                                      (balHR (Node a Red lt rlt))
+balHR                     _                  = error "No black height deficit possible"
 
-
--- Similar to insertion, Tries to correct the height deficit if possible otherwise bubbles the deficit upwards
+-- Tries to correct the height deficit if possible otherwise bubbles the deficit upwards
 balanceL' :: Ord a => RBTree a -> Either (RBTree a) (RBTree a)
 balanceL' (Node a col (Node b Red (Node c Red lllt llrt) lrt) rt) = 
                                       Done $ Node b col (Node c Black lllt llrt) (Node a Black lrt rt)

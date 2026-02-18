@@ -1,14 +1,14 @@
 module Main where
 
 import qualified MyLib (someFunc)
-import RedBlackTrees
-import BST
-import Criterion.Main
+import qualified RedBlackTrees
+import qualified BST
+
 
 
 main :: IO ()
 main = do
-  let t = fromList [1..10]
-  let t1 = delete t 10
+  let t = RedBlackTrees.fromList [1..10]
+  let t1 = RedBlackTrees.delete t 10
   print t1 
   MyLib.someFunc
